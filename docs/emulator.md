@@ -43,6 +43,8 @@ head unit:
                       mouse = touch, keys = iDrive controller, panel = signals and settings
 ```
 
+The local connection is a Unix-domain socket on macOS and Linux, and a named pipe on Windows.
+
 - **The app** gets READY, TICK, touch and the controller as `mgu-render` gives them on the car,
   so the kit runs the screen itself: header tabs, page buttons, the settings sheet, scrolling.
 - **Ticks** come when the page has drawn a frame, so the app runs exactly as fast as the page

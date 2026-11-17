@@ -27,6 +27,7 @@ const rec = require('./record');
 const SOCKETS = process.env.MGU_RENDERD_SOCKET ? [process.env.MGU_RENDERD_SOCKET] : ['/run/mgu-renderd/renderd.sock', '/run/mgu-render/render.sock'];
 const SOCKET = SOCKETS[0];
 const isSocket = (p) => { try { return fs.statSync(p).isSocket(); } catch (e) { return false; } };
+const endpointAvailable = (p) => (process.platform === 'win32' && p.indexOf('\\\\.\\pipe\\') === 0) || isSocket(p);
 const M = { HELLO: 1, PLACE: 2, SHOW: 3, ATLAS: 4, RAMP: 5, LAYER: 6, FRAME: 7, DROP_LAYER: 8, IMAGE: 9, GRAB: 10 };
 const E = { READY: 101, TICK: 102, ERROR: 103, STATS: 104, CCU: 105 };
 // touch (mgu-render, IterioDev's mgu-renderd): message 9 is CLAIM there; 105 and 106 come back as TOUCH and CLOSED
@@ -72,7 +73,7 @@ class RenderClient extends EventEmitter {
     }
 
     /** Socket exists (the renderer is installed and running)? */
-    static available(path) { return path ? isSocket(path) : SOCKETS.some(isSocket); }
+    static available(path) { return path ? endpointAvailable(path) : SOCKETS.some(endpointAvailable); }
 
     connect() {
         if (this.opts.file) {

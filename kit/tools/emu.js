@@ -9,7 +9,7 @@
  *   app       python3 kit/tools/build.py <id>, then dist/<id> in a child node (hu-stub.js: a stubbed head
  *             unit, settings in preview/emu/<id>/). A save under apps/<id>/ or kit/runtime/ builds and
  *             restarts it; a failed build keeps the old one running.
- *   renderer  the daemon side of kit/renderd/PROTOCOL.md on a Unix socket (MGU_RENDERD_SOCKET for the app):
+ *   renderer  the daemon side of kit/renderd/PROTOCOL.md on a local socket (MGU_RENDERD_SOCKET for the app):
  *             HELLO -> X_READY (touch routing, controller gate) + READY, X_STATE, TICK when the browser has
  *             drawn the last frame (a page that has not ticked for 200 ms does not paint - a background tab, a
  *             hidden pane, a minimised window: the frames count as drawn when they come, at the FPS cap, until a
@@ -68,8 +68,10 @@ const listApps = () => fs.readdirSync(path.join(ROOT, 'apps')).filter((d) => fs.
 const appTitles = () => listApps().reduce((o, id) => { try { o[id] = JSON.parse(fs.readFileSync(path.join(ROOT, 'apps', id, 'app.json'), 'utf8')).title || id; } catch (e) { o[id] = id; } return o; }, {});
 let appId = args[0];
 if (!appId || listApps().indexOf(appId) < 0) { console.error('usage: node kit/tools/emu.js <app> [--port 8077] [--bg file.png] [--no-touch]\napps: ' + listApps().join(' ')); process.exit(2); }
-// (a short path: Unix socket paths are limited to ~104 bytes)
-const SOCK = path.join(os.tmpdir(), 'mgu-emu-' + process.pid + '.sock');
+// Unix socket paths are limited to ~104 bytes; Windows uses a named pipe instead.
+const SOCK = process.platform === 'win32'
+    ? '\\\\.\\pipe\\mgu-emu-' + process.pid
+    : path.join(os.tmpdir(), 'mgu-emu-' + process.pid + '.sock');
 const MAX_MSG = 24 << 20;                       // a bigger message ends the connection (PROTOCOL.md "Framing")
 const PAGE_BEHIND = 8 << 20, PAGE_GONE = 64 << 20;   // bytes queued to a page: frames wait for it / it is closed
 
@@ -618,7 +620,7 @@ function build() {
     App.waiting = null;
     setStatus('building');
     let outText = '';
-    const p = App.building = spawn('python3', [path.join(ROOT, 'kit', 'tools', 'build.py'), id], { cwd: ROOT });
+    const p = App.building = spawn(process.platform === 'win32' ? 'python' : 'python3', [path.join(ROOT, 'kit', 'tools', 'build.py'), id], { cwd: ROOT });
     p.stdout.on('data', (d) => { outText += d; });
     p.stderr.on('data', (d) => { outText += d; });
     p.on('error', (e) => { outText += String(e); });
